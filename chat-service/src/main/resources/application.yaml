@@ -1,3 +1,18 @@
+server:
+  port: 8080
+
 spring:
-  application:
-    name: chat-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/aichat
+    username: postgres
+    password: 123456
+    # driver-class-name không bắt buộc trên Boot 3.x, có thể bỏ
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update   # dev nhanh: tự tạo/chỉnh bảng theo @Entity
+    show-sql: true       # in SQL ra log để debug
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect

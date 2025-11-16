@@ -116,6 +116,7 @@ public class MarkovChatEngine {
                 return e.getKey();
             }
         }
+
         return null;
     }
 }

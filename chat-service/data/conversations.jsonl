@@ -1,0 +1,83 @@
+{"messages":[
+  {"role":"system","content":"Bạn là trợ lý AI thân thiện, nói tiếng Việt, trả lời lịch sự và dễ hiểu."},
+  {"role":"user","content":"xin chào"},
+  {"role":"assistant","content":"xin chào bạn, mình là trợ lý ảo. hôm nay bạn muốn hỏi gì không?"}
+]}
+{"messages":[
+  {"role":"system","content":"Bạn là trợ lý AI hữu ích."},
+  {"role":"user","content":"bạn là ai"},
+  {"role":"assistant","content":"mình là trợ lý ảo đơn giản, được tạo ra để trò chuyện và giúp bạn những điều cơ bản."}
+]}
+{"messages":[
+  {"role":"system","content":"Bạn trả lời ngắn gọn, rõ ràng."},
+  {"role":"user","content":"hôm nay trời đẹp quá"},
+  {"role":"assistant","content":"đúng rồi, ngày đẹp như vậy thì tâm trạng cũng vui theo phải không?"}
+]}
+{"messages":[
+  {"role":"user","content":"mình hơi mệt"},
+  {"role":"assistant","content":"nghe bạn nói vậy mình cũng lo. bạn thử nghỉ ngơi một chút, uống nước và thả lỏng cơ thể nhé."}
+]}
+{"messages":[
+  {"role":"user","content":"bạn có thể làm thơ không"},
+  {"role":"assistant","content":"mình có thể thử làm thơ vui cho bạn:\ntrời xanh mây trắng nhẹ trôi,\nchúc bạn luôn khỏe, nụ cười thật tươi."}
+]}
+{"messages":[
+  {"role":"user","content":"docker là gì"},
+  {"role":"assistant","content":"docker là công cụ đóng gói ứng dụng thành các 'container', giúp chạy đồng nhất trên mọi máy."}
+]}
+{"messages":[
+  {"role":"user","content":"java dùng để làm gì"},
+  {"role":"assistant","content":"java được dùng để viết web, mobile, backend server và rất nhiều hệ thống lớn trong doanh nghiệp."}
+]}
+{"messages":[
+  {"role":"user","content":"hôm nay bạn thế nào"},
+  {"role":"assistant","content":"mình luôn sẵn sàng trò chuyện cùng bạn nè, cảm ơn bạn đã hỏi!"}
+]}
+{"messages":[
+  {"role":"user","content":"cách học lập trình hiệu quả"},
+  {"role":"assistant","content":"bạn nên đặt mục tiêu nhỏ, học từng bước, vừa học vừa thực hành dự án thật. làm từ dễ đến khó sẽ hiệu quả hơn."}
+]}
+{"messages":[
+  {"role":"user","content":"chúc mình một ngày vui vẻ"},
+  {"role":"assistant","content":"chúc bạn một ngày thật vui vẻ, nhiều năng lượng và thành công nhé!"}
+]}
+{"messages":[
+  {"role":"user","content":"bạn ơi mình buồn quá"},
+  {"role":"assistant","content":"mình luôn ở đây lắng nghe bạn. nếu có điều gì muốn tâm sự, bạn có thể kể cho mình nghe nhé."}
+]}
+{"messages":[
+  {"role":"user","content":"nói vài câu động lực đi"},
+  {"role":"assistant","content":"bạn đã cố gắng rất nhiều rồi. chỉ cần tiến thêm từng chút mỗi ngày, bạn sẽ đi xa hơn bạn nghĩ đấy!"}
+]}
+{"messages":[
+  {"role":"user","content":"bạn giúp mình học docker được không"},
+  {"role":"assistant","content":"tất nhiên rồi! docker giúp đóng gói ứng dụng. bước đầu tiên bạn nên hiểu image, container và Dockerfile."}
+]}
+{"messages":[
+  {"role":"user","content":"hôm nay bạn thấy thế nào"},
+  {"role":"assistant","content":"mình vẫn hoạt động ổn và sẵn sàng hỗ trợ bạn bất cứ khi nào nè!"}
+]}
+{"messages":[
+  {"role":"user","content":"chúc ngủ ngon"},
+  {"role":"assistant","content":"chúc bạn ngủ ngon, mơ đẹp và có một đêm thật yên bình nhé."}
+]}
+{"messages":[
+  {"role":"user","content":"tâm sự với mình chút đi"},
+  {"role":"assistant","content":"mình luôn ở đây để trò chuyện với bạn. bạn đang nghĩ về điều gì vậy?"}
+]}
+{"messages":[
+  {"role":"user","content":"bạn có thể gợi ý món ăn không"},
+  {"role":"assistant","content":"hôm nay bạn thử phở, bún bò hoặc cơm tấm xem? món nào cũng ngon hết!"}
+]}
+{"messages":[
+  {"role":"user","content":"hôm nay mình buồn ngủ quá"},
+  {"role":"assistant","content":"bạn thử đứng dậy vươn vai, uống nước và vận động nhẹ chút xem, sẽ tỉnh táo hơn đó."}
+]}
+{"messages":[
+  {"role":"user","content":"bạn làm thơ 4 câu nữa đi"},
+  {"role":"assistant","content":"mình thử làm thêm bài nữa:\ntrời chiều gió nhẹ thoảng qua,\nbạn ơi đừng lo nghĩ quá,\ncuộc sống vẫn nhiều điều đẹp,\ncứ bước, rồi trời sẽ quang ha."}
+]}
+{"messages":[
+  {"role":"user","content":"mình muốn học java từ đầu"},
+  {"role":"assistant","content":"bạn có thể bắt đầu từ biến, hàm, lớp và hướng đối tượng. học xong những phần đó bạn có thể làm ứng dụng Java nhỏ rồi!"}
+]}

@@ -21,13 +21,12 @@ public class SimpleTokenizer {
     }
 
     private int addWord(String w) {
-        if (!wordToId.containsKey(w)) {
-            int id = idToWord.size();
-            wordToId.put(w, id);
-            idToWord.add(w);
-            return id;
-        }
-        return wordToId.get(w);
+        Integer id = wordToId.get(w);
+        if (id != null) return id;
+        int newId = idToWord.size();
+        wordToId.put(w, newId);
+        idToWord.add(w);
+        return newId;
     }
 
     /**
@@ -35,17 +34,22 @@ public class SimpleTokenizer {
      */
     public int[] encode(String text) {
         text = text.toLowerCase()
-                .replaceAll("[,.?!;:]", ""); // bỏ dấu câu
+                .replaceAll("[,.?!;:]", ""); // bỏ dấu câu đơn giản
 
         String[] words = text.split("\\s+");
+        List<Integer> ids = new ArrayList<>();
 
-        int[] ids = new int[words.length];
-        for (int i = 0; i < words.length; i++) {
-            String w = words[i].trim();
+        for (String raw : words) {
+            String w = raw.trim();
             if (w.isEmpty()) continue;
-            ids[i] = addWord(w);
+            ids.add(addWord(w));
         }
-        return ids;
+
+        int[] arr = new int[ids.size()];
+        for (int i = 0; i < ids.size(); i++) {
+            arr[i] = ids.get(i);
+        }
+        return arr;
     }
 
     /**
@@ -54,10 +58,17 @@ public class SimpleTokenizer {
     public String decode(List<Integer> ids) {
         StringBuilder sb = new StringBuilder();
         for (int id : ids) {
-            if (id < idToWord.size()) {
-                sb.append(idToWord.get(id)).append(" ");
-            }
+            if (id < 0 || id >= idToWord.size()) continue;
+            sb.append(idToWord.get(id)).append(" ");
         }
         return sb.toString().trim();
+    }
+
+    // Thêm hàm normalize để dùng chung cho map hỏi–đáp
+    public String normalize(String text) {
+        return text.toLowerCase()
+                .replaceAll("[,.?!;:]", "")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 }

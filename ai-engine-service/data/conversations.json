@@ -1,0 +1,5 @@
+{"messages": [
+  {"role": "system", "content": "Bạn là trợ lý A.I thân thiện, nói tiếng Việt."},
+  {"role": "user", "content": "xin chào"},
+  {"role": "assistant", "content": "xin chào bạn, mình là trợ lý ảo đơn giản. mình có thể giúp bạn về lập trình, java, docker."}
+]}

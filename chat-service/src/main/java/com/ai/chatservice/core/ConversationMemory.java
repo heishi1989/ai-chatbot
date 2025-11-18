@@ -1,108 +1,132 @@
 package com.ai.chatservice.core;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * Lưu cặp (user → assistant) đơn giản, đọc từ conversations.jsonl
+ * Ghi nhớ các cặp (user -> assistant) từ file training.
+ *
+ * - Đọc file JSONL do bạn cung cấp (mỗi dòng là 1 object {"messages":[...]}).
+ * - Với mỗi block:
+ *      user: "..."  ->  assistant: "..."
+ *   sẽ lưu vào map để trả lời trực tiếp khi người dùng hỏi giống y chang.
+ * - Đồng thời gọi MarkovChatEngine.trainPair(...) để engine Markov học luôn
+ *   cả context user + assistant.
  */
 public class ConversationMemory {
 
+    private final SimpleTokenizer tokenizer;
+
+    // key: câu user đã chuẩn hoá (normalize)
+    // value: danh sách các câu trả lời assistant có thể dùng
     private final Map<String, List<String>> userToReplies = new HashMap<>();
 
-    private final SimpleTokenizer tokenizer;
+    private final Random rnd = new Random(123);
 
     public ConversationMemory(SimpleTokenizer tokenizer) {
         this.tokenizer = tokenizer;
     }
 
-    public void loadFromJsonl(String filePath) throws Exception {
-        List<String> lines = Files.readAllLines(Path.of(filePath));
+    /**
+     * Đọc file training dạng nhiều khối JSON:
+     *
+     *  {"messages":[
+     *    {"role":"system","content":"..."},
+     *    {"role":"user","content":"..."},
+     *    {"role":"assistant","content":"..."}
+     *  ]}
+     *  {"messages":[ ... ]}
+     *  ...
+     *
+     * @param filePath đường dẫn file (vd: "data/training.jsonl")
+     * @param engine   MarkovChatEngine để train thêm (có thể null nếu không dùng)
+     */
+    public void load(String filePath, MarkovChatEngine engine) throws IOException {
 
-        String pendingUser = null;  // nhớ câu user gần nhất
+        // Đọc hết file thành 1 chuỗi (vì mỗi block có thể nhiều dòng)
+        String all = Files.readString(Path.of(filePath), StandardCharsets.UTF_8);
 
-        for (String line : lines) {
-            if (line == null || line.isBlank()) continue;
+        // 1) Tìm từng khối {"messages":[ ... ]}
+        Pattern convPat = Pattern.compile(
+                "\\{\\\"messages\\\":\\[(.+?)]}",
+                Pattern.DOTALL
+        );
+        Matcher mConv = convPat.matcher(all);
 
-            // Nếu là dòng user → lưu lại
-            String u = extractContent(line, "\"role\":\"user\"");
-            if (u != null) {
-                pendingUser = u;
-                continue;
+        int convCount = 0;
+
+        while (mConv.find()) {
+            convCount++;
+            String block = mConv.group(1); // phần bên trong [... ] của messages
+
+            // 2) Trong mỗi block, tìm từng message:
+            //    {"role":"xxx","content":"yyy"}
+            Pattern msgPat = Pattern.compile(
+                    "\\{\\\"role\\\":\\\"(system|user|assistant)\\\",\\\"content\\\":\\\"(.*?)\\\"}",
+                    Pattern.DOTALL
+            );
+            Matcher mMsg = msgPat.matcher(block);
+
+            String lastUser = null;
+
+            while (mMsg.find()) {
+                String role = mMsg.group(1);      // system / user / assistant
+                String content = unescape(mMsg.group(2)).trim(); // text thực tế
+
+                if ("user".equals(role)) {
+                    // gặp user -> ghi nhớ, chờ assistant phía sau
+                    lastUser = content;
+
+                } else if ("assistant".equals(role) && lastUser != null) {
+                    // khi gặp assistant và đã có user ngay trước đó
+                    // => tạo cặp (user -> assistant)
+
+                    // 1) lưu để trả lời trực tiếp
+                    String key = tokenizer.normalize(lastUser);
+                    userToReplies
+                            .computeIfAbsent(key, k -> new ArrayList<>())
+                            .add(content);
+
+                    // 2) cho Markov học luôn context user+assistant
+                    if (engine != null) {
+                        engine.trainPair(tokenizer, lastUser, content);
+                    }
+
+                    // nếu mỗi block chỉ 1 cặp user/assistant thì reset
+                    lastUser = null;
+                }
+                // role = system thì bỏ qua
             }
-
-            // Nếu là dòng assistant → ghép với pendingUser (nếu có)
-            String a = extractContent(line, "\"role\":\"assistant\"");
-            if (a != null && pendingUser != null) {
-                String key = tokenizer.normalize(pendingUser);
-                userToReplies
-                        .computeIfAbsent(key, k -> new ArrayList<>())
-                        .add(a.trim());
-
-                // reset để lần sau không ghép nhầm
-                pendingUser = null;
-            }
-
-            // Dòng system thì mình bỏ qua, không cần xử lý
         }
 
-        System.out.println("ConversationMemory loaded pairs = " + userToReplies.size());
+        System.out.println("ConversationMemory loaded " + convCount + " conversations.");
+        System.out.println("Distinct user patterns: " + userToReplies.size());
     }
 
     /**
-     * Trả về câu trả lời nếu prompt trùng với một user trong dữ liệu.
+     * Giải mã các escape đơn giản từ JSON:
+     *   \\n  -> xuống dòng
+     *   \\\" -> "
+     * (đủ dùng cho file training do chính mình tạo)
      */
-    public String findDirectReply(String prompt) {
-        String key = tokenizer.normalize(prompt);
+    private String unescape(String s) {
+        return s
+                .replace("\\n", "\n")
+                .replace("\\\"", "\"");
+    }
+
+    /**
+     * Tìm câu trả lời "chuẩn" nếu user hỏi giống hệt như trong training.
+     * - Nếu tìm thấy nhiều câu trả lời cho 1 câu hỏi, sẽ chọn ngẫu nhiên 1 câu.
+     */
+    public String findDirectReply(String userInput) {
+        String key = tokenizer.normalize(userInput);
         List<String> replies = userToReplies.get(key);
         if (replies == null || replies.isEmpty()) return null;
-        // nếu có nhiều reply cho cùng 1 câu hỏi → chọn ngẫu nhiên 1 cái
-        return replies.get(new Random().nextInt(replies.size()));
-    }
-
-    /**
-     * Trích content từ JSONL thô, dựa trên marker "role":...
-     * Đây là parser thủ công rất đơn giản, chỉ đủ dùng cho file tự quản lý.
-     */
-    private String extractContent(String line, String roleMarker) {
-        int roleIdx = line.indexOf(roleMarker);
-        if (roleIdx < 0) return null;
-
-        int contentIdx = line.indexOf("\"content\":\"", roleIdx);
-        if (contentIdx < 0) return null;
-        contentIdx += "\"content\":\"".length();
-
-        StringBuilder sb = new StringBuilder();
-        boolean escape = false;
-        for (int i = contentIdx; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (escape) {
-                // xử lý 1 số escape cơ bản
-                if (c == 'n') sb.append('\n');
-                else if (c == '\"') sb.append('\"');
-                else sb.append(c);
-                escape = false;
-            } else if (c == '\\') {
-                escape = true;
-            } else if (c == '\"') {
-                break;
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
-    }
-
-    /**
-     * Gom toàn bộ câu trả lời assistant thành 1 text lớn để train Markov.
-     */
-    public String buildAssistantCorpus() {
-        StringBuilder sb = new StringBuilder();
-        for (List<String> replies : userToReplies.values()) {
-            for (String r : replies) {
-                sb.append(r).append(". ");
-            }
-        }
-        return sb.toString();
+        return replies.get(rnd.nextInt(replies.size()));
     }
 }

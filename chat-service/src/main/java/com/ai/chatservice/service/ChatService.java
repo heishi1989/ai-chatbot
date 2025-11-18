@@ -16,7 +16,7 @@ import java.nio.file.Files;
 public class ChatService {
 
     private final SimpleTokenizer tokenizer = new SimpleTokenizer();
-    private final MarkovChatEngine markov = new MarkovChatEngine();
+    private final MarkovChatEngine engine = new MarkovChatEngine(2);
     private final ConversationMemory memory = new ConversationMemory(tokenizer);
 
     private boolean trained = false;
@@ -31,11 +31,7 @@ public class ChatService {
             }
 
             // 1) Load cặp hỏi–đáp
-            memory.loadFromJsonl(file);
-
-            // 2) Lấy toàn bộ assistant content để train Markov
-            String assistantCorpus = memory.buildAssistantCorpus();
-            markov.train(tokenizer, assistantCorpus);
+            memory.load(file, engine);
 
             trained = true;
             System.out.println(">>> ChatService: trained from " + file);
@@ -58,8 +54,8 @@ public class ChatService {
             return direct;
         }
 
-        // 2) Nếu không có match -> dùng Markov để bắt chước style
-        String answer = markov.generate(tokenizer, prompt, 30);
+        // 2) fallback: dùng Markov bậc 2 sinh câu mới
+        String answer = engine.generate(tokenizer, prompt, 30);
         if (answer == null || answer.isBlank()) {
             return "Mình chưa nghĩ ra câu trả lời phù hợp từ dữ liệu đã học, bạn thử hỏi lại cách khác nha.";
         }

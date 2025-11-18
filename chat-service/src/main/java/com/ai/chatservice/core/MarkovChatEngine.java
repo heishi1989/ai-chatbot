@@ -3,63 +3,63 @@ package com.ai.chatservice.core;
 import java.util.*;
 
 /**
- * A.I kiểu “Markov” cực dễ hiểu:
- *
- * - A.I đọc toàn bộ văn bản huấn luyện.
- * - Nó đếm xem: Sau từ A → thường xuất hiện từ B nào?
- *
- * Ví dụ:
- *   "xin chào bạn"
- *   "xin lỗi bạn"
- *
- * Sau từ "xin":
- *   {"chào":1, "lỗi":1}
- *
- * ⇒ Khi sinh câu, nếu từ cuối là "xin", A.I sẽ chọn “chào” hoặc “lỗi”.
- *
- * Như vậy:
- * - A.I nói có nghĩa thật (vì học từ dữ liệu thật)
- * - Nhưng chỉ ở mức đơn giản, bắt chước mẫu đã học
+ * Markov n-gram (bậc 1,2,3...)
+ * - order = 1  → giống bản cũ
+ * - order = 2/3→ nhìn 2/3 token trước để đoán token sau
  */
 public class MarkovChatEngine {
 
-    // Chứa thống kê:
-    //   fromToken → (toToken → count)
-    private final Map<Integer, Map<Integer, Integer>> transitions = new HashMap<>();
-
+    private final int order; // bậc Markov
+    // stateKey (ví dụ "12,35") → (nextToken → count)
+    private final Map<String, Map<Integer, Integer>> transitions = new HashMap<>();
     private final Random random = new Random(42);
 
+    public MarkovChatEngine(int order) {
+        this.order = Math.max(1, order); // không cho nhỏ hơn 1
+    }
+
     /**
-     * Huấn luyện từ 1 đoạn văn bản thô.
-     * Dữ liệu càng nhiều → A.I càng nói giống "người" hơn.
+     * Huấn luyện từ 1 chuỗi văn bản thô.
+     * Có thể gọi nhiều lần với các đoạn text khác nhau.
      */
     public void train(SimpleTokenizer tokenizer, String text) {
+        int[] tokens = tokenizer.encode(text);
+        if (tokens.length <= order) return;
 
-        // Tách câu theo dấu . ! ?
-        String[] sentences = text.split("[\\.\\!\\?]+");
+        // Khởi tạo cửa sổ đầu tiên
+        int[] window = new int[order];
+        System.arraycopy(tokens, 0, window, 0, order);
 
-        for (String sentence : sentences) {
-            sentence = sentence.trim();
-            if (sentence.isEmpty()) continue;
+        for (int i = order; i < tokens.length; i++) {
+            String state = stateKey(window);
+            int next = tokens[i];
 
-            // Chuyển câu thành token
-            int[] tokens = tokenizer.encode(sentence);
+            Map<Integer, Integer> freq =
+                    transitions.computeIfAbsent(state, k -> new HashMap<>());
+            freq.put(next, freq.getOrDefault(next, 0) + 1);
 
-            // Với mỗi cặp liên tiếp (A → B), tăng đếm
-            for (int i = 0; i < tokens.length - 1; i++) {
-                int t1 = tokens[i];
-                int t2 = tokens[i + 1];
-
-                Map<Integer, Integer> map = transitions.computeIfAbsent(t1, k -> new HashMap<>());
-                map.put(t2, map.getOrDefault(t2, 0) + 1);
-            }
+            // Trượt cửa sổ: bỏ phần tử đầu, thêm next vào cuối
+            System.arraycopy(window, 1, window, 0, order - 1);
+            window[order - 1] = next;
         }
     }
 
     /**
-     * Sinh câu mới dựa trên prompt.
-     * - Lấy từ cuối của prompt làm điểm bắt đầu.
-     * - Chọn token tiếp theo theo tần suất.
+     * Huấn luyện từ 1 cặp (user, assistant).
+     * - Ghép user + assistant lại thành 1 chuỗi
+     *   để từ của assistant phụ thuộc vào context user.
+     */
+    public void trainPair(SimpleTokenizer tokenizer,
+                          String userText,
+                          String assistantText) {
+        // Có thể thêm token đặc biệt giữa 2 bên cho rõ ràng
+        // VD: "<sep>" nhưng ở đây mình ghép thẳng cho đơn giản
+        String combined = userText + " " + assistantText;
+        train(tokenizer, combined);
+    }
+
+    /**
+     * Sinh câu trả lời mới dựa trên prompt.
      */
     public String generate(SimpleTokenizer tokenizer,
                            String prompt,
@@ -68,42 +68,67 @@ public class MarkovChatEngine {
         int[] encoded = tokenizer.encode(prompt);
         List<Integer> output = new ArrayList<>();
 
-        int currentToken;
+        int[] window = new int[order];
 
-        if (encoded.length == 0) {
-            // Nếu prompt rỗng → chọn đại 1 token trong bảng
-            currentToken = pickAnyToken();
+        if (encoded.length >= order) {
+            // Dùng đúng order token cuối của câu hỏi
+            System.arraycopy(
+                    encoded,
+                    encoded.length - order,
+                    window,
+                    0,
+                    order
+            );
+        } else if (encoded.length > 0) {
+            // Nếu ít token hơn order → lặp lại token cuối cho đủ
+            Arrays.fill(window, encoded[encoded.length - 1]);
         } else {
-            currentToken = encoded[encoded.length - 1];
+            // Prompt rỗng → chọn state bất kỳ
+            String any = pickAnyState();
+            if (any == null) return "";
+            String[] parts = any.split(",");
+            for (int i = 0; i < order; i++) {
+                window[i] = Integer.parseInt(parts[i]);
+            }
         }
 
-        // Sinh tiếp các token mới
         for (int i = 0; i < maxNewTokens; i++) {
-
-            Integer next = pickNext(currentToken);
+            String state = stateKey(window);
+            Integer next = pickNext(state);
             if (next == null) break;
 
             output.add(next);
-            currentToken = next;
+
+            // Trượt cửa sổ
+            System.arraycopy(window, 1, window, 0, order - 1);
+            window[order - 1] = next;
         }
 
         return tokenizer.decode(output);
     }
 
-    /**
-     * Chọn token bất kỳ làm token bắt đầu.
-     */
-    private int pickAnyToken() {
-        if (transitions.isEmpty()) return 0;
-        List<Integer> keys = new ArrayList<>(transitions.keySet());
+    // ========= Helpers =========
+
+    // Chuyển cửa sổ token thành key chuỗi: "id1,id2,..."
+    private String stateKey(int[] window) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < window.length; i++) {
+            if (i > 0) sb.append(',');
+            sb.append(window[i]);
+        }
+        return sb.toString();
+    }
+
+    // Chọn state bất kỳ
+    private String pickAnyState() {
+        if (transitions.isEmpty()) return null;
+        List<String> keys = new ArrayList<>(transitions.keySet());
         return keys.get(random.nextInt(keys.size()));
     }
 
-    /**
-     * Chọn token tiếp theo dựa trên tần suất xuất hiện.
-     */
-    private Integer pickNext(int token) {
-        Map<Integer, Integer> freq = transitions.get(token);
+    // Chọn token tiếp theo dựa trên tần suất xuất hiện
+    private Integer pickNext(String state) {
+        Map<Integer, Integer> freq = transitions.get(state);
         if (freq == null || freq.isEmpty()) return null;
 
         int total = freq.values().stream().mapToInt(i -> i).sum();
@@ -116,7 +141,6 @@ public class MarkovChatEngine {
                 return e.getKey();
             }
         }
-
         return null;
     }
 }
